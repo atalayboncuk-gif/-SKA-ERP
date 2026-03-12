@@ -647,81 +647,92 @@ function aiCevap(sorgu){
 
 
 // ═══════════════════════════════════════════════════════════
-// GOOGLE SHEETS ENTEGRASYONU
+// SUPABASE ENTEGRASYONU
 // ═══════════════════════════════════════════════════════════
-var GS_URL = 'https://script.google.com/macros/s/AKfycbyxjzHwLGXA3h3abl0zwvE53cM9sezwVB_JqiSF_sTgx9YaPFzjnbKPh5QZtwCcD2t5/exec';
+var SB_URL = 'https://wtbvmagacbbmuwfxqrnj.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0YnZtYWdhY2JibXV3Znhxcm5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNzYxOTcsImV4cCI6MjA4ODg1MjE5N30.5Qr_7D10N77fUJYORTyswLBgYPxWFxBKQBlh0wojleU';
 
-function gsGet(action, cb) {
-  if (!GS_URL) { cb(null); return; }
-  // JSONP ile CORS bypass
-  var cbName = 'gs_cb_' + Date.now();
-  var script = document.createElement('script');
-  window[cbName] = function(d){ cb(d); delete window[cbName]; script.remove(); };
-  script.src = GS_URL + '?action=' + action + '&callback=' + cbName;
-  script.onerror = function(){ cb(null); delete window[cbName]; script.remove(); };
-  document.head.appendChild(script);
-}
-
-function gsPost(data, cb) {
-  if (!GS_URL) { if(cb) cb({ok:false}); return; }
-  // POST için form submit yöntemi
-  fetch(GS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: {'Content-Type': 'text/plain'},
-    body: JSON.stringify(data)
-  }).then(function(){ if(cb) cb({ok:true}); })
-    .catch(function(){ if(cb) cb(null); });
-}
-
-function gsStokGuncelle(kod, ad, miktar, raf, kat) {
-  gsPost({action:'updateStok', kod:kod, ad:ad, miktar:miktar, raf:raf, kat:kat}, function(r){
-    if(r&&r.ok) addLog('GS: '+kod+' → '+miktar+' adet kaydedildi','gr');
-  });
-}
-
-function gsIHEkle(bestNo, mus, urunNo) {
-  return new Promise(function(resolve){
-    gsPost({action:'addIH', bestNo:bestNo, mus:mus, urunNo:urunNo}, function(r){
-      resolve(r&&r.id ? r.id : Date.now());
-    });
-  });
-}
-
-function gsLogEkle(msg, tip) {
-  gsPost({action:'addLog', msg:msg.replace(/<[^>]*>/g,''), tip:tip});
-}
-
-// Başlangıçta GS'den stok yükle (URL varsa)
-function gsStokYukle(cb) {
-  if (!GS_URL) { cb(); return; }
-  document.getElementById('gs-status').textContent = '🔄 Google Sheets\'ten yükleniyor...';
-  gsGet('getStok', function(data) {
-    if (data && Array.isArray(data) && data.length > 0) {
-      DEPO = data;
-      document.getElementById('gs-status').textContent = '✅ GS bağlı · ' + data.length + ' stok';
-    } else {
-      document.getElementById('gs-status').textContent = GS_URL ? '⚠️ GS bağlanamadı' : '📁 Yerel mod';
+function sbFetch(path, opts) {
+  return fetch(SB_URL + '/rest/v1/' + path, Object.assign({
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
     }
-    if(cb) cb();
-  });
+  }, opts || {}));
 }
 
-function gsAyarlar() {
-  var url = prompt('Apps Script Web App URL\'sini girin:\n(örn: https://script.google.com/macros/s/ABC.../exec)', GS_URL||'');
-  if (url !== null) {
-    GS_URL = url.trim();
-    try { localStorage.setItem('iska_gs_url', GS_URL); } catch(e){}
-    if (GS_URL) gsStokYukle(function(){ git('dashboard'); });
-    else document.getElementById('gs-status').textContent = '📁 Yerel mod';
-  }
+// Stok yükle
+function sbStokYukle(cb) {
+  var el = document.getElementById('gs-status');
+  if(el) el.textContent = '🔄 Yükleniyor...';
+  sbFetch('stok?select=*&order=kod')
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if(data && Array.isArray(data) && data.length > 0) {
+        DEPO = data.map(function(d){ return {k:d.kod,a:d.ad,m:d.miktar||0,r:d.raf||'',c:d.kategori||''}; });
+        if(el) el.textContent = '✅ Supabase · ' + DEPO.length + ' stok';
+      } else {
+        if(el) el.textContent = '📁 Yerel mod (Supabase boş)';
+      }
+      if(cb) cb();
+    })
+    .catch(function() {
+      if(el) el.textContent = '⚠️ Bağlanamadı';
+      if(cb) cb();
+    });
 }
 
-// Kayıtlı URL varsa onu kullan, yoksa sabit URL
-try {
-  var savedUrl = localStorage.getItem('iska_gs_url');
-  if (savedUrl) GS_URL = savedUrl;
-} catch(e) {}
+// Stok güncelle
+function sbStokGuncelle(kod, ad, miktar, raf, kat) {
+  // Önce var mı kontrol et
+  sbFetch('stok?kod=eq.' + encodeURIComponent(kod))
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      if(data && data.length > 0) {
+        // Güncelle
+        return sbFetch('stok?kod=eq.' + encodeURIComponent(kod), {
+          method: 'PATCH',
+          body: JSON.stringify({miktar:miktar, raf:raf, guncelleme:'now()'})
+        });
+      } else {
+        // Ekle
+        return sbFetch('stok', {
+          method: 'POST',
+          body: JSON.stringify({kod:kod, ad:ad, miktar:miktar, raf:raf, kategori:kat||''})
+        });
+      }
+    })
+    .catch(function(){});
+}
+
+// İhtiyaç ekle
+function sbIHEkle(bestNo, mus, urunNo) {
+  var id = Date.now();
+  sbFetch('ihtiyac', {
+    method: 'POST',
+    body: JSON.stringify({id:id, best_no:bestNo, musteri:mus, urun_no:urunNo, durum:'bekliyor'})
+  }).catch(function(){});
+  return id;
+}
+
+// Log ekle
+function sbLogEkle(msg, tip) {
+  sbFetch('log', {
+    method: 'POST',
+    body: JSON.stringify({mesaj:msg.replace(/<[^>]*>/g,''), tip:tip||'bl'})
+  }).catch(function(){});
+}
+
+function gsStokGuncelle(kod, ad, miktar, raf, kat) { sbStokGuncelle(kod, ad, miktar, raf, kat); }
+function gsIHEkle(bestNo, mus, urunNo) { return sbIHEkle(bestNo, mus, urunNo); }
+function gsLogEkle(msg, tip) { sbLogEkle(msg, tip); }
+function gsStokYukle(cb) { sbStokYukle(cb); }
+function gsAyarlar() { alert('Supabase: ' + SB_URL); }
+
+// Kayıtlı URL kontrolü (artık kullanılmıyor)
+try { localStorage.removeItem('iska_gs_url'); } catch(e) {}
 
 // ── BAŞLAT ────────────────────────────────────────────────
 document.getElementById('tdate').textContent=new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
