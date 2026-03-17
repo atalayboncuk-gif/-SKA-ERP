@@ -120,25 +120,14 @@ def parse_orders(files):
  
 def parse_depo(fpath):
     df = pd.read_excel(fpath, header=None)
-    header_row = None
-    for i, row in df.iterrows():
-        vals = [str(v).strip().upper() for v in row.values]
-        if 'NETSİS KODU' in vals or 'NETSIS KODU' in vals:
-            header_row = i; break
-    if header_row is None:
-        for i, row in df.iterrows():
-            vals = [str(v).strip().upper() for v in row.values]
-            if any('KALAN' in v for v in vals):
-                header_row = i; break
-    if header_row is None: return []
- 
-    df.columns = [str(c).strip().upper() for c in df.iloc[header_row]]
-    df = df.iloc[header_row+1:].reset_index(drop=True)
+    # Header satır 3'te sabit
+    df.columns = [str(c).strip().upper() for c in df.iloc[3]]
+    df = df.iloc[4:].reset_index(drop=True)
     
-    kod_col = next((c for c in df.columns if 'NETSİS' in c or 'NETSIS' in c or 'KOD' in c), None)
+    kod_col = next((c for c in df.columns if 'NETSİS' in c or 'NETSIS' in c), None)
     mik_col = next((c for c in df.columns if 'KALAN' in c), None)
     raf_col = next((c for c in df.columns if 'RAF' in c), None)
-    ad_col  = df.columns[0] if df.columns[0] not in [kod_col, mik_col, raf_col] else None
+    ad_col  = df.columns[0]
  
     depo = []
     for _, row in df.iterrows():
