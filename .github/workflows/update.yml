@@ -1,0 +1,31 @@
+name: ERP Otomatik Güncelle
+
+on:
+  push:
+    paths:
+      - 'data/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Python kur
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Kütüphaneleri yükle
+        run: pip install pandas openpyxl
+
+      - name: ERP güncelle
+        run: python update_erp.py
+
+      - name: GitHub'a kaydet
+        run: |
+          git config user.email "erp-bot@iska.com"
+          git config user.name "ERP Bot"
+          git add index.html
+          git diff --staged --quiet || git commit -m "ERP otomatik güncellendi $(date '+%d.%m.%Y %H:%M')"
+          git push
