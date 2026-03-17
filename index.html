@@ -591,7 +591,21 @@ function rIH(){
     return '<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center"><div><strong style="color:var(--ac)">'+x.bestNo+'</strong><span style="color:var(--t2);font-size:11px;margin-left:8px">'+x.mus+' · '+x.urunNo+'</span></div>'+dg+'</div></div>';
   }).join(''):'<div class="card" style="text-align:center;padding:30px;color:var(--t3)">Henüz ihtiyaç listesi yok.</div>';
 }
-function ihYeni(){addLog('Yeni ihtiyaç listesi açıldı','or');}
+function ihYeni(){
+  var best = prompt('Bestellung / Sipariş No (örn: Bestellung 12345):');
+  if(!best) return;
+  var mus = prompt('Müşteri:');
+  if(!mus) return;
+  var urun = prompt('Ürün No (örn: T0124):');
+  if(!urun) return;
+  var id = Date.now();
+  var ih = gIH();
+  ih.push({id:id, bestNo:best, mus:mus, urunNo:urun, durum:'bekliyor', t:new Date().toLocaleTimeString('tr-TR')});
+  localStorage.setItem('iska_ih', JSON.stringify(ih));
+  gsIHEkle(best, mus, urun);
+  log('Yeni ihtiyaç: '+best+' · '+mus+' · '+urun, 'or');
+  rIH();
+}
 function ktrBas(id){}
 
 // ── STOK KONTROL ─────────────────────────────────────────
