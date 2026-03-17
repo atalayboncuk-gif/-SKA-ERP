@@ -171,3 +171,38 @@ with open('index.html','w',encoding='utf-8') as f:
     f.write(html)
  
 print(f"\n✅ index.html güncellendi ({len(html)//1024} KB)")
+ 
+ 
+# ── SUPABASE GÜNCELLE ──────────────────────────────────────
+import urllib.request, json as json_mod
+ 
+SB_URL = 'https://wtbvmagacbbmuwfxqrnj.supabase.co'
+SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind0YnZtYWdhY2JibXV3Znhxcm5qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNzYxOTcsImV4cCI6MjA4ODg1MjE5N30.5Qr_7D10N77fUJYORTyswLBgYPxWFxBKQBlh0wojleU'
+ 
+def sb_request(path, method='GET', data=None):
+    url = SB_URL + '/rest/v1/' + path
+    headers = {
+        'apikey': SB_KEY,
+        'Authorization': 'Bearer ' + SB_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+    }
+    body = json_mod.dumps(data).encode('utf-8') if data else None
+    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        urllib.request.urlopen(req, timeout=15)
+        return True
+    except Exception as e:
+        print(f"  Supabase hata: {e}")
+        return False
+ 
+if depo:
+    print("\n☁️  Supabase stok güncelleniyor...")
+    batch_size = 50
+    success = 0
+    for i in range(0, len(depo), batch_size):
+        batch = depo[i:i+batch_size]
+        rows = [{'kod':d['k'],'ad':d['a'],'miktar':d['m'],'raf':d['r'],'kategori':d['c']} for d in batch]
+        if sb_request('stok', 'POST', rows):
+            success += len(batch)
+    print(f"  ✅ {success}/{len(depo)} ürün Supabase'e aktarıldı")
