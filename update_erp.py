@@ -160,12 +160,14 @@ if depo_files:
     depo = parse_depo(depo_files[0])
     print(f"🏭 Depo: {len(depo)} ürün ({os.path.basename(depo_files[0])})")
 
-# Template'i oku ve verileri yerleştir
-with open('erp_template.html','r',encoding='utf-8') as f:
+# Mevcut index.html'deki veriyi güncelle
+import re as re_mod
+
+with open('index.html','r',encoding='utf-8') as f:
     html = f.read()
 
-html = html.replace('__DEPO__', json.dumps(depo, ensure_ascii=False))
-html = html.replace('__SIPARISLER__', json.dumps(orders, ensure_ascii=False))
+html = re_mod.sub(r'var DEPO=(?:\[.*?\]|__DEPO__);', 'var DEPO='+json.dumps(depo, ensure_ascii=False)+';', html, flags=re_mod.DOTALL)
+html = re_mod.sub(r'var SIPARISLER=(?:\[.*?\]|__SIPARISLER__);', 'var SIPARISLER='+json.dumps(orders, ensure_ascii=False)+';', html, flags=re_mod.DOTALL)
 
 with open('index.html','w',encoding='utf-8') as f:
     f.write(html)
