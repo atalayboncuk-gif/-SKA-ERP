@@ -501,13 +501,9 @@ function rSip(){
       +'<td style="text-align:right;color:var(--gr)">'+Math.round(x.fiyat*x.adet).toLocaleString('tr-TR')+'</td>'
       +'<td>'+(x.tarih||'—')+'</td>'
       +'<td><span class="bdg '+(x.durum==='aktif'?'or':'gr')+'">'+(x.durum==='aktif'?'Aktif':'✅')+'</span></td>'
-      +(ROL==='up'?'<td><button class="btn bo up-talep-btn" data-idx="'+_sipIdx+'" style="font-size:11px;padding:3px 10px">Talep Oluştur</button></td>':'<td></td>')+'</tr>';
+      +(ROL==='up'?'<td><button class="btn bo" style="font-size:11px;padding:3px 10px" onclick="(function(){upTalepAcIdx('+_sipIdx+');})()">Talep Oluştur</button></td>':'<td></td>')+'</tr>';
   }).join('');
-  document.getElementById('sip-tb').onclick=function(e){
-    var btn=e.target.closest?e.target.closest('.up-talep-btn'):(e.target.className&&e.target.className.indexOf('up-talep-btn')>=0?e.target:null);
-    if(btn){e.stopPropagation();upTalepAcIdx(parseInt(btn.getAttribute('data-idx')));}
-  };
-  var me=document.getElementById('sip-m');if(me&&me.options.length<2){var ml=[...new Set(sip.map(function(x){return x.musteri;}))].sort();ml.forEach(function(m){var o=document.createElement('option');o.value=o.textContent=m;me.appendChild(o);});}
+    var me=document.getElementById('sip-m');if(me&&me.options.length<2){var ml=[...new Set(sip.map(function(x){return x.musteri;}))].sort();ml.forEach(function(m){var o=document.createElement('option');o.value=o.textContent=m;me.appendChild(o);});}
 }
 
 // ── GÖNDERİLDİ ───────────────────────────────────────────
